@@ -87,6 +87,13 @@ onMounted(() => {
           </ElTag>
         </template>
       </ElTableColumn>
+      <ElTableColumn label="深度通知" width="100" align="center">
+        <template #default="{ row }">
+          <ElTag :type="row.depthChangeNotify ? 'success' : 'info'">
+            {{ row.depthChangeNotify ? '已订阅' : '未订阅' }}
+          </ElTag>
+        </template>
+      </ElTableColumn>
       <ElTableColumn prop="description" label="描述" show-overflow-tooltip />
       <ElTableColumn prop="createdAt" label="创建时间" width="180" />
       <ElTableColumn label="操作" width="180" fixed="right">

@@ -71,6 +71,7 @@ public class TeamService {
                 .minDepth(request.getMinDepth() != null ? request.getMinDepth() : 0)
                 .maxDepth(request.getMaxDepth())
                 .certifiedDepth(request.getCertifiedDepth())
+                .depthChangeNotify(request.getDepthChangeNotify() != null ? request.getDepthChangeNotify() : true)
                 .description(request.getDescription())
                 .build();
 
@@ -100,6 +101,8 @@ public class TeamService {
         team.setMinDepth(request.getMinDepth() != null ? request.getMinDepth() : 0);
         team.setMaxDepth(request.getMaxDepth());
         team.setCertifiedDepth(request.getCertifiedDepth());
+        team.setDepthChangeNotify(request.getDepthChangeNotify() != null
+                ? request.getDepthChangeNotify() : team.getDepthChangeNotify());
         team.setDescription(request.getDescription());
 
         Team savedTeam = teamRepository.save(team);

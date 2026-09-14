@@ -40,6 +40,10 @@ public class Team {
     @Column(name = "certified_depth", nullable = false)
     private Integer certifiedDepth;
 
+    @Column(name = "depth_change_notify", nullable = false)
+    @Builder.Default
+    private Boolean depthChangeNotify = true;
+
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 

@@ -11,7 +11,8 @@ const menuItems = [
   { path: '/equipment', label: '装备管理', icon: '⚙️' },
   { path: '/team', label: '小组管理', icon: '👥' },
   { path: '/binding', label: '深度绑定', icon: '🔗' },
-  { path: '/filter', label: '装备筛选', icon: '🔍' }
+  { path: '/filter', label: '装备筛选', icon: '🔍' },
+  { path: '/notification', label: '站内通知', icon: '🔔' }
 ]
 
 const isActive = (path: string) => route.path.startsWith(path)

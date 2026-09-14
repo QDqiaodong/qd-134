@@ -1,6 +1,6 @@
 <script setup lang="ts">import { ref, onMounted, computed, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import { ElForm, ElFormItem, ElInput, ElInputNumber, ElButton, ElMessage } from 'element-plus';
+import { ElForm, ElFormItem, ElInput, ElInputNumber, ElButton, ElMessage, ElSwitch } from 'element-plus';
 import { teamApi } from '@/api';
 const router = useRouter();
 const route = useRoute();
@@ -11,6 +11,7 @@ const form = ref({
  minDepth: 0,
  maxDepth: 30,
  certifiedDepth: 30,
+ depthChangeNotify: true,
  description: ''
 });
 const depthError = ref('');
@@ -48,6 +49,7 @@ const loadTeam = async () => {
  minDepth: data.minDepth || 0,
  maxDepth: data.maxDepth,
  certifiedDepth: data.certifiedDepth,
+ depthChangeNotify: data.depthChangeNotify ?? true,
  description: data.description || ''
  };
  } catch (error) {
@@ -133,6 +135,15 @@ onMounted(() => {
         <span v-if="depthError" class="error-text">{{ depthError }}</span>
       </ElFormItem>
       
+      <ElFormItem label="深度变动通知" prop="depthChangeNotify">
+        <ElSwitch
+          v-model="form.depthChangeNotify"
+          active-text="订阅"
+          inactive-text="退订"
+        />
+        <span class="notify-hint">订阅后，深度下调导致装备解绑时会收到站内通知</span>
+      </ElFormItem>
+
       <ElFormItem label="描述" prop="description">
         <ElInput v-model="form.description" type="textarea" :rows="3" placeholder="请输入描述" />
       </ElFormItem>
@@ -177,5 +188,11 @@ onMounted(() => {
   color: #F56C6C;
   font-size: 12px;
   margin-top: 4px;
+}
+
+.notify-hint {
+  margin-left: 12px;
+  color: #94A3B8;
+  font-size: 12px;
 }
 </style>

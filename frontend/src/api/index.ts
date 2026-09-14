@@ -53,6 +53,7 @@ export interface Team {
   minDepth: number
   maxDepth: number
   certifiedDepth: number
+  depthChangeNotify: boolean
   description: string
   createdAt: string
   updatedAt: string
@@ -64,6 +65,20 @@ export interface Binding {
   equipmentId: number
   boundAt: string
   status: string
+}
+
+export interface Notification {
+  id: number
+  teamId: number
+  teamName: string
+  title: string
+  content: string
+  notifyType: string
+  removedCount: number
+  equipmentNames: string
+  readStatus: boolean
+  readAt: string | null
+  createdAt: string
 }
 
 export interface PageResponse<T> {
@@ -113,6 +128,17 @@ export const bindingApi = {
   delete: (id: number) => request.delete<void>(`/binding/${id}`),
   sync: (data: { teamId: number; newMaxDepth: number; operator?: string }) =>
     request.post<{ removedCount: number; removedEquipments: number[] }>('/binding/sync', data)
+}
+
+export const notificationApi = {
+  list: (page = 0, size = 20, teamId?: number, readStatus?: boolean) =>
+    request.get<PageResponse<Notification>>('/notification', {
+      params: { page, size, teamId, readStatus }
+    }),
+  get: (id: number) => request.get<Notification>(`/notification/${id}`),
+  markRead: (id: number) => request.put<Notification>(`/notification/${id}/read`),
+  unreadCount: (teamId?: number) =>
+    request.get<number>('/notification/unread-count', { params: { teamId } })
 }
 
 export default api

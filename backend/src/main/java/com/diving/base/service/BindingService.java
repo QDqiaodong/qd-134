@@ -41,6 +41,7 @@ public class BindingService {
     private final TeamRepository teamRepository;
     private final DepthValidationService depthValidationService;
     private final DepthAdjustRecordRepository depthAdjustRecordRepository;
+    private final NotificationService notificationService;
     private final ObjectMapper objectMapper;
 
     @Cacheable(value = "binding", key = "#id")
@@ -150,6 +151,10 @@ public class BindingService {
                 .build();
 
         depthAdjustRecordRepository.save(record);
+
+        if (!overDepthEquipments.isEmpty()) {
+            notificationService.notifyDepthUnbind(team, newMaxDepth, overDepthEquipments);
+        }
 
         Map<String, Object> result = new HashMap<>();
         result.put("removedCount", removedEquipmentIds.size());

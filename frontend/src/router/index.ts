@@ -5,6 +5,7 @@ import TeamList from '@/views/TeamList.vue'
 import TeamForm from '@/views/TeamForm.vue'
 import BindingManager from '@/views/BindingManager.vue'
 import EquipmentFilter from '@/views/EquipmentFilter.vue'
+import NotificationList from '@/views/NotificationList.vue'
 
 const routes = [
   { path: '/', redirect: '/equipment' },
@@ -15,7 +16,8 @@ const routes = [
   { path: '/team/add', component: TeamForm },
   { path: '/team/edit/:id', component: TeamForm },
   { path: '/binding', component: BindingManager },
-  { path: '/filter', component: EquipmentFilter }
+  { path: '/filter', component: EquipmentFilter },
+  { path: '/notification', component: NotificationList }
 ]
 
 const router = createRouter({

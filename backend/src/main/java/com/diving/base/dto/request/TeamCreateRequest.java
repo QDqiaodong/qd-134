@@ -33,5 +33,7 @@ public class TeamCreateRequest {
     @Positive(message = "持证最大深度必须为正数")
     private Integer certifiedDepth;
 
+    private Boolean depthChangeNotify;
+
     private String description;
 }
