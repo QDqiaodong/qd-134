@@ -1,6 +1,7 @@
 package com.diving.base.repository;
 
 import com.diving.base.dto.response.BindingResponse;
+import com.diving.base.dto.response.TeamWeightView;
 import com.diving.base.entity.Binding;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -26,6 +27,17 @@ public interface BindingRepository extends JpaRepository<Binding, Long> {
 
     @Query("SELECT b.equipmentId FROM Binding b WHERE b.teamId = :teamId AND b.status = 'ACTIVE'")
     List<Long> findEquipmentIdsByTeamId(@Param("teamId") Long teamId);
+
+    /**
+     * 按小组汇总当前占用装备的登记重量。仅统计状态为 ACTIVE 的绑定关系，
+     * 已解绑的不计入；装备重量为空时按 0 处理。
+     */
+    @Query(value = "SELECT b.teamId AS teamId, " +
+            "COALESCE(SUM(COALESCE(e.weight, 0)), 0) AS totalWeight " +
+            "FROM Binding b, Equipment e " +
+            "WHERE b.equipmentId = e.id AND b.status = 'ACTIVE' AND b.teamId IN :teamIds " +
+            "GROUP BY b.teamId")
+    List<TeamWeightView> sumActiveWeightByTeamIds(@Param("teamIds") List<Long> teamIds);
 
     @Modifying
     @Query("DELETE FROM Binding b WHERE b.teamId = :teamId AND b.equipmentId IN :equipmentIds")

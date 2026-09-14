@@ -13,6 +13,16 @@ const selectedTeam = computed(() => {
   return teams.value.find(t => t.id === selectedTeamId.value)
 })
 
+// 只合计当前已绑定（占用中）的装备；已解绑的已从列表移除，不会计入；未填重量按 0
+const totalWeight = computed(() => {
+  return boundEquipments.value.reduce((sum, equipment) => {
+    const weight = Number(equipment.weight ?? 0)
+    return sum + (Number.isFinite(weight) ? weight : 0)
+  }, 0)
+})
+
+const formatWeight = (weight: number) => weight.toFixed(2)
+
 const unboundEquipments = computed(() => {
   const boundIds = new Set(boundEquipments.value.map(e => e.id))
   return equipments.value.filter(e => !boundIds.has(e.id))
@@ -74,6 +84,7 @@ const handleBind = async (equipmentId: number) => {
     })
     ElMessage.success(`成功绑定装备「${equipment.name}」`)
     loadBoundEquipments()
+    loadTeams()
   } catch (error) {
     ElMessage.error((error as Error).message)
   }
@@ -97,6 +108,7 @@ const handleUnbind = async (equipmentId: number) => {
     
     ElMessage.success('解绑成功')
     loadBoundEquipments()
+    loadTeams()
   } catch (error) {
     if (error !== 'cancel') {
       ElMessage.error((error as Error).message)
@@ -176,6 +188,7 @@ onMounted(() => {
             <span>成员数量: {{ selectedTeam.memberCount }}</span>
             <span>深度范围: {{ selectedTeam.minDepth }}m - {{ selectedTeam.maxDepth }}m</span>
             <span>持证深度: <ElTag :type="selectedTeam.maxDepth <= selectedTeam.certifiedDepth ? 'success' : 'danger'">{{ selectedTeam.certifiedDepth }}m</ElTag></span>
+            <span>占用装备总重: <strong>{{ formatWeight(totalWeight) }} kg</strong>（{{ boundEquipments.length }} 件）</span>
           </div>
         </div>
       </ElCard>

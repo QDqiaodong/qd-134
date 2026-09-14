@@ -69,7 +69,7 @@ public class EquipmentService {
     }
 
     @Transactional
-    @CacheEvict(value = {"equipment", "equipmentList", "equipmentFilter"}, allEntries = true)
+    @CacheEvict(value = {"equipment", "equipmentList", "equipmentFilter", "teamList"}, allEntries = true)
     public Equipment update(Long id, EquipmentCreateRequest request) {
         Equipment equipment = findById(id);
 
@@ -88,7 +88,7 @@ public class EquipmentService {
     }
 
     @Transactional
-    @CacheEvict(value = {"equipment", "equipmentList", "equipmentFilter"}, allEntries = true)
+    @CacheEvict(value = {"equipment", "equipmentList", "equipmentFilter", "teamList"}, allEntries = true)
     public void delete(Long id) {
         if (!equipmentRepository.existsById(id)) {
             throw new RuntimeException("装备不存在: " + id);

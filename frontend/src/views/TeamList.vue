@@ -53,6 +53,12 @@ const handleAdd = () => {
   router.push('/team/add')
 }
 
+// 未填重量的装备按 0 计入合计；接口未返回时也按 0 展示
+const formatWeight = (weight: number | null | undefined) => {
+  const value = Number(weight ?? 0)
+  return Number.isFinite(value) ? value.toFixed(2) : '0.00'
+}
+
 onMounted(() => {
   loadTeams()
 })
@@ -74,6 +80,11 @@ onMounted(() => {
     
     <ElTable :data="teams" :loading="loading" border stripe style="width: 100%">
       <ElTableColumn prop="name" label="小组名称" width="150" />
+      <ElTableColumn label="占用装备总重(kg)" width="160" align="right">
+        <template #default="{ row }">
+          <span class="total-weight">{{ formatWeight(row.totalWeight) }}</span>
+        </template>
+      </ElTableColumn>
       <ElTableColumn prop="memberCount" label="成员数量" width="100" />
       <ElTableColumn label="深度范围(m)" width="160">
         <template #default="{ row }">
@@ -128,5 +139,10 @@ onMounted(() => {
   gap: 12px;
   margin-bottom: 20px;
   align-items: center;
+}
+
+.total-weight {
+  font-weight: 600;
+  color: #0A2463;
 }
 </style>

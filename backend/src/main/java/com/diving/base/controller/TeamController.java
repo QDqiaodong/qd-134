@@ -3,6 +3,7 @@ package com.diving.base.controller;
 import com.diving.base.dto.request.TeamCreateRequest;
 import com.diving.base.dto.response.ApiResponse;
 import com.diving.base.dto.response.PageResponse;
+import com.diving.base.dto.response.TeamResponse;
 import com.diving.base.entity.Team;
 import com.diving.base.service.TeamService;
 import jakarta.validation.Valid;
@@ -18,11 +19,11 @@ public class TeamController {
     private final TeamService teamService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<PageResponse<Team>>> list(
+    public ResponseEntity<ApiResponse<PageResponse<TeamResponse>>> list(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String keyword) {
-        PageResponse<Team> result = teamService.findAll(page, size, keyword);
+        PageResponse<TeamResponse> result = teamService.findAll(page, size, keyword);
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 

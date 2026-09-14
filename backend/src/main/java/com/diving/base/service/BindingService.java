@@ -74,7 +74,7 @@ public class BindingService {
     }
 
     @Transactional
-    @CacheEvict(value = {"binding", "bindingTeam"}, allEntries = true)
+    @CacheEvict(value = {"binding", "bindingTeam", "teamList"}, allEntries = true)
     public Binding create(BindingCreateRequest request) {
         Team team = teamService.findById(request.getTeamId());
         Equipment equipment = equipmentService.findById(request.getEquipmentId());
@@ -95,14 +95,14 @@ public class BindingService {
     }
 
     @Transactional
-    @CacheEvict(value = {"binding", "bindingTeam"}, allEntries = true)
+    @CacheEvict(value = {"binding", "bindingTeam", "teamList"}, allEntries = true)
     public void delete(Long id) {
         Binding binding = findById(id);
         bindingRepository.delete(binding);
     }
 
     @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
-    @CacheEvict(value = {"binding", "bindingTeam"}, allEntries = true)
+    @CacheEvict(value = {"binding", "bindingTeam", "teamList"}, allEntries = true)
     public Map<String, Object> syncDepth(BindingSyncRequest request) {
         Team team = teamRepository.findById(request.getTeamId())
                 .orElseThrow(() -> new RuntimeException("小组不存在: " + request.getTeamId()));

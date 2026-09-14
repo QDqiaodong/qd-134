@@ -57,6 +57,8 @@ export interface Team {
   description: string
   createdAt: string
   updatedAt: string
+  // 当前占用（ACTIVE 绑定）装备的登记重量合计，已解绑的不计入，未填重量按 0
+  totalWeight: number
 }
 
 export interface Binding {
@@ -120,13 +122,15 @@ export const equipmentApi = {
     request.get<PageResponse<Equipment>>('/equipment/filter', { params: { minDepth, maxDepth, page, size } })
 }
 
+export type TeamPayload = Omit<Team, 'id' | 'createdAt' | 'updatedAt' | 'totalWeight'>
+
 export const teamApi = {
   list: (page = 0, size = 20, keyword?: string) =>
     request.get<PageResponse<Team>>('/team', { params: { page, size, keyword } }),
   get: (id: number) => request.get<Team>(`/team/${id}`),
-  create: (data: Omit<Team, 'id' | 'createdAt' | 'updatedAt'>) =>
+  create: (data: TeamPayload) =>
     request.post<Team>('/team', data),
-  update: (id: number, data: Omit<Team, 'id' | 'createdAt' | 'updatedAt'>) =>
+  update: (id: number, data: TeamPayload) =>
     request.put<Team>(`/team/${id}`, data),
   delete: (id: number) => request.delete<void>(`/team/${id}`)
 }

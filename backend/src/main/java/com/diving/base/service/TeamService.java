@@ -2,7 +2,10 @@ package com.diving.base.service;
 
 import com.diving.base.dto.request.TeamCreateRequest;
 import com.diving.base.dto.response.PageResponse;
+import com.diving.base.dto.response.TeamResponse;
+import com.diving.base.dto.response.TeamWeightView;
 import com.diving.base.entity.Team;
+import com.diving.base.repository.BindingRepository;
 import com.diving.base.repository.TeamRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -10,11 +13,18 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -22,7 +32,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class TeamService {
 
     private final TeamRepository teamRepository;
-    
+    private final BindingRepository bindingRepository;
+
     private BindingService bindingService;
 
     @org.springframework.beans.factory.annotation.Autowired
@@ -37,17 +48,42 @@ public class TeamService {
     }
 
     @Cacheable(value = "teamList", key = "#page + '_' + #size + '_' + #keyword")
-    public PageResponse<Team> findAll(int page, int size, String keyword) {
+    public PageResponse<TeamResponse> findAll(int page, int size, String keyword) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<Team> teamPage;
-        
+
         if (keyword != null && !keyword.isEmpty()) {
             teamPage = teamRepository.findByNameContaining(keyword, pageable);
         } else {
             teamPage = teamRepository.findAll(pageable);
         }
-        
-        return PageResponse.from(teamPage);
+
+        List<Long> teamIds = teamPage.getContent().stream()
+                .map(Team::getId)
+                .collect(Collectors.toList());
+        Map<Long, BigDecimal> weightByTeam = sumActiveWeight(teamIds);
+
+        List<TeamResponse> content = teamPage.getContent().stream()
+                .map(team -> TeamResponse.of(team, weightByTeam.get(team.getId())))
+                .collect(Collectors.toList());
+
+        Page<TeamResponse> responsePage = new PageImpl<>(content, pageable, teamPage.getTotalElements());
+        return PageResponse.from(responsePage);
+    }
+
+    /**
+     * 汇总各小组当前占用（ACTIVE 绑定）装备的登记重量；
+     * 已解绑装备不计入，未填写重量按 0 处理。无占用装备的小组合计为 0。
+     */
+    private Map<Long, BigDecimal> sumActiveWeight(List<Long> teamIds) {
+        if (teamIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return bindingRepository.sumActiveWeightByTeamIds(teamIds).stream()
+                .collect(Collectors.toMap(
+                        TeamWeightView::getTeamId,
+                        view -> view.getTotalWeight() != null ? view.getTotalWeight() : BigDecimal.ZERO,
+                        (a, b) -> a));
     }
 
     @Transactional
