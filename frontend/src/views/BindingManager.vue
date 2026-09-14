@@ -8,6 +8,10 @@ const equipments = ref<Equipment[]>([])
 const selectedTeamId = ref<number | null>(null)
 const boundEquipments = ref<Equipment[]>([])
 const loading = ref(false)
+// 提交中的绑定请求（按装备维度），用于禁用按钮防连点，避免同一装备重复提交
+const bindingIds = ref<Set<number>>(new Set())
+
+const isBinding = (equipmentId: number) => bindingIds.value.has(equipmentId)
 
 const selectedTeam = computed(() => {
   return teams.value.find(t => t.id === selectedTeamId.value)
@@ -73,20 +77,27 @@ const handleTeamChange = () => {
 
 const handleBind = async (equipmentId: number) => {
   if (!selectedTeamId.value) return
-  
+  // 连点/重入直接忽略：同一装备的提交未返回前不再发第二个请求
+  if (isBinding(equipmentId)) return
+
   const equipment = equipments.value.find(e => e.id === equipmentId)
   if (!equipment) return
-  
+
+  bindingIds.value.add(equipmentId)
   try {
     await bindingApi.create({
       teamId: selectedTeamId.value,
       equipmentId
     })
     ElMessage.success(`成功绑定装备「${equipment.name}」`)
-    loadBoundEquipments()
+    await loadBoundEquipments()
     loadTeams()
   } catch (error) {
+    // 已提交过/重复提交时后端返回明确提示，刷新占用清单保持与服务端一致
     ElMessage.error((error as Error).message)
+    loadBoundEquipments()
+  } finally {
+    bindingIds.value.delete(equipmentId)
   }
 }
 
@@ -210,13 +221,14 @@ onMounted(() => {
           <ElTableColumn prop="weight" label="重量(kg)" width="100" />
           <ElTableColumn label="操作" width="100" fixed="right">
             <template #default="{ row }">
-              <ElButton 
-                type="success" 
-                link 
-                :disabled="!canBind(row as Equipment)"
+              <ElButton
+                type="success"
+                link
+                :loading="isBinding((row as Equipment).id)"
+                :disabled="!canBind(row as Equipment) || isBinding((row as Equipment).id)"
                 @click="handleBind((row as Equipment).id)"
               >
-                {{ canBind(row as Equipment) ? '绑定' : '超证' }}
+                {{ isBinding((row as Equipment).id) ? '绑定中' : (canBind(row as Equipment) ? '绑定' : '超证') }}
               </ElButton>
             </template>
           </ElTableColumn>

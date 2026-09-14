@@ -16,14 +16,19 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -43,6 +48,21 @@ public class BindingService {
     private final DepthAdjustRecordRepository depthAdjustRecordRepository;
     private final NotificationService notificationService;
     private final ObjectMapper objectMapper;
+    private final StringRedisTemplate stringRedisTemplate;
+
+    private BindingService self;
+
+    @Autowired
+    public void setSelf(@Lazy BindingService self) {
+        this.self = self;
+    }
+
+    /**
+     * 同小组+同装备的绑定提交互斥锁，锁需在事务提交后才释放，避免后来者
+     * 在首条占用尚未落库可见前通过查重再插一条。锁 TTL 仅作为宕机兜底。
+     */
+    private static final String BIND_LOCK_PREFIX = "lock:binding:create:";
+    private static final Duration BIND_LOCK_TTL = Duration.ofSeconds(10);
 
     @Cacheable(value = "binding", key = "#id")
     public Binding findById(Long id) {
@@ -73,14 +93,48 @@ public class BindingService {
         return equipmentRepository.findAllById(equipmentIds);
     }
 
+    /**
+     * 绑定入口（不加事务）：对同一「小组+装备」的提交加 Redis 互斥锁串行化，
+     * 防连点/重放产生重复占用。锁覆盖整个事务直到提交完成才释放；
+     * 抢不到锁说明同一提交已在处理中，直接按重复提交提示，不再开第二条占用。
+     */
+    public Binding create(BindingCreateRequest request) {
+        String lockKey = BIND_LOCK_PREFIX + request.getTeamId() + ":" + request.getEquipmentId();
+        boolean locked = false;
+        try {
+            Boolean acquired = stringRedisTemplate.opsForValue()
+                    .setIfAbsent(lockKey, "1", BIND_LOCK_TTL);
+            locked = Boolean.TRUE.equals(acquired);
+            if (!locked) {
+                log.warn("绑定请求重复提交被拦截: teamId={}, equipmentId={}",
+                        request.getTeamId(), request.getEquipmentId());
+                throw new RuntimeException("该装备已绑定到该小组，请勿重复提交");
+            }
+            // 经代理调用，保证 @Transactional/@CacheEvict 生效且事务在锁内提交
+            return self.doCreate(request);
+        } catch (DataIntegrityViolationException e) {
+            log.warn("唯一约束兜底拦截重复绑定: teamId={}, equipmentId={}",
+                    request.getTeamId(), request.getEquipmentId());
+            throw new RuntimeException("该装备已绑定到该小组，请勿重复提交");
+        } finally {
+            if (locked) {
+                try {
+                    stringRedisTemplate.delete(lockKey);
+                } catch (Exception ex) {
+                    log.warn("释放绑定防重锁失败，等待TTL自动过期: key={}", lockKey, ex);
+                }
+            }
+        }
+    }
+
     @Transactional
     @CacheEvict(value = {"binding", "bindingTeam", "teamList"}, allEntries = true)
-    public Binding create(BindingCreateRequest request) {
+    public Binding doCreate(BindingCreateRequest request) {
         Team team = teamService.findById(request.getTeamId());
         Equipment equipment = equipmentService.findById(request.getEquipmentId());
 
         if (bindingRepository.existsByTeamIdAndEquipmentId(request.getTeamId(), request.getEquipmentId())) {
-            throw new RuntimeException("该装备已绑定到该小组");
+            throw new RuntimeException("该装备已绑定到该小组，请勿重复提交");
         }
 
         depthValidationService.validateBinding(team, equipment);
@@ -91,7 +145,8 @@ public class BindingService {
                 .status("ACTIVE")
                 .build();
 
-        return bindingRepository.save(binding);
+        // flush 让唯一约束冲突在此事务内抛出，由上层统一转成重复提交提示
+        return bindingRepository.saveAndFlush(binding);
     }
 
     @Transactional
