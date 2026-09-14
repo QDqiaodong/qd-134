@@ -28,8 +28,8 @@ const validateDepth = () => {
  depthError.value = '最小深度必须小于最大深度';
  return false;
  }
- if (form.value.certifiedDepth > form.value.maxDepth) {
- depthError.value = '持证深度不能超过最大允许深度';
+ if (form.value.maxDepth > form.value.certifiedDepth) {
+ depthError.value = '最大允许深度不能超过持证深度，证深不符禁止保存';
  return false;
  }
  depthError.value = '';
@@ -114,21 +114,21 @@ onMounted(() => {
         </ElFormItem>
         
         <ElFormItem label="最大允许深度(m)" prop="maxDepth">
-          <ElInputNumber 
-            v-model="form.maxDepth" 
-            :min="form.minDepth + 1" 
-            :max="500"
+          <ElInputNumber
+            v-model="form.maxDepth"
+            :min="form.minDepth + 1"
+            :max="form.certifiedDepth"
             placeholder="最大深度"
             style="width: 100%"
           />
         </ElFormItem>
       </div>
-      
+
       <ElFormItem label="持证最大深度(m)" prop="certifiedDepth">
-        <ElInputNumber 
-          v-model="form.certifiedDepth" 
-          :min="1" 
-          :max="form.maxDepth"
+        <ElInputNumber
+          v-model="form.certifiedDepth"
+          :min="1"
+          :max="500"
           placeholder="持证深度"
           style="width: 100%"
         />

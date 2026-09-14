@@ -20,7 +20,7 @@ const unboundEquipments = computed(() => {
 
 const canBind = (equipment: Equipment) => {
   if (!selectedTeam.value) return false
-  return equipment.maxDepth <= selectedTeam.value.maxDepth
+  return equipment.maxDepth <= selectedTeam.value.certifiedDepth
 }
 
 const loadTeams = async () => {
@@ -118,7 +118,12 @@ const handleSyncDepth = async () => {
     )
     
     const newMaxDepth = parseInt(result.value)
-    
+
+    if (newMaxDepth > selectedTeam.value.certifiedDepth) {
+      ElMessage.error(`目标深度(${newMaxDepth}m)超过小组持证深度(${selectedTeam.value.certifiedDepth}m)，证深不符禁止同步`)
+      return
+    }
+
     const syncResult = await bindingApi.sync({
       teamId: selectedTeam.value.id,
       newMaxDepth,
@@ -170,7 +175,7 @@ onMounted(() => {
           <div class="info-row">
             <span>成员数量: {{ selectedTeam.memberCount }}</span>
             <span>深度范围: {{ selectedTeam.minDepth }}m - {{ selectedTeam.maxDepth }}m</span>
-            <span>持证深度: <ElTag :type="selectedTeam.certifiedDepth >= selectedTeam.maxDepth ? 'success' : 'warning'">{{ selectedTeam.certifiedDepth }}m</ElTag></span>
+            <span>持证深度: <ElTag :type="selectedTeam.maxDepth <= selectedTeam.certifiedDepth ? 'success' : 'danger'">{{ selectedTeam.certifiedDepth }}m</ElTag></span>
           </div>
         </div>
       </ElCard>
@@ -198,7 +203,7 @@ onMounted(() => {
                 :disabled="!canBind(row as Equipment)"
                 @click="handleBind((row as Equipment).id)"
               >
-                {{ canBind(row as Equipment) ? '绑定' : '超深度' }}
+                {{ canBind(row as Equipment) ? '绑定' : '超证' }}
               </ElButton>
             </template>
           </ElTableColumn>

@@ -2,6 +2,7 @@ package com.diving.base.service;
 
 import com.diving.base.dto.request.BindingCreateRequest;
 import com.diving.base.dto.request.BindingSyncRequest;
+import com.diving.base.dto.response.BindingResponse;
 import com.diving.base.dto.response.PageResponse;
 import com.diving.base.entity.Binding;
 import com.diving.base.entity.DepthAdjustRecord;
@@ -20,7 +21,6 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -50,9 +50,13 @@ public class BindingService {
                 .orElseThrow(() -> new RuntimeException("绑定关系不存在: " + id));
     }
 
-    public PageResponse<Binding> findAll(int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "boundAt"));
-        Page<Binding> bindingPage = bindingRepository.findAll(pageable);
+    /**
+     * 绑定记录列表不走缓存，超证标记按当前持证深度实时计算，
+     * 保证刷新后超证标记与最新证深一致。
+     */
+    public PageResponse<BindingResponse> findAll(int page, int size, Boolean overCertified) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<BindingResponse> bindingPage = bindingRepository.findBindingViews(overCertified, pageable);
         return PageResponse.from(bindingPage);
     }
 
@@ -104,6 +108,14 @@ public class BindingService {
                 .orElseThrow(() -> new RuntimeException("小组不存在: " + request.getTeamId()));
         Integer oldMaxDepth = team.getMaxDepth();
         Integer newMaxDepth = request.getNewMaxDepth();
+
+        if (newMaxDepth > team.getCertifiedDepth()) {
+            log.warn("同步深度拦截: 目标深度{}m超过小组[{}]持证深度{}m",
+                    newMaxDepth, team.getName(), team.getCertifiedDepth());
+            throw new RuntimeException(String.format(
+                    "目标深度(%dm)超过小组[%s]持证深度(%dm)，证深不符禁止同步",
+                    newMaxDepth, team.getName(), team.getCertifiedDepth()));
+        }
 
         if (newMaxDepth >= oldMaxDepth) {
             return Map.of(

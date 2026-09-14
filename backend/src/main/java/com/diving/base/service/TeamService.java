@@ -61,8 +61,8 @@ public class TeamService {
             throw new RuntimeException("最小深度必须小于最大深度");
         }
 
-        if (request.getCertifiedDepth() > request.getMaxDepth()) {
-            throw new RuntimeException("持证深度不能超过最大允许深度");
+        if (request.getMaxDepth() > request.getCertifiedDepth()) {
+            throw new RuntimeException("最大允许深度不能超过持证深度，证深不符禁止保存");
         }
 
         Team team = Team.builder()
@@ -92,8 +92,8 @@ public class TeamService {
             throw new RuntimeException("最小深度必须小于最大深度");
         }
 
-        if (request.getCertifiedDepth() > request.getMaxDepth()) {
-            throw new RuntimeException("持证深度不能超过最大允许深度");
+        if (request.getMaxDepth() > request.getCertifiedDepth()) {
+            throw new RuntimeException("最大允许深度不能超过持证深度，证深不符禁止保存");
         }
 
         team.setName(request.getName());

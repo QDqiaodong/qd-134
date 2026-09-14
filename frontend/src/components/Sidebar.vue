@@ -11,11 +11,15 @@ const menuItems = [
   { path: '/equipment', label: '装备管理', icon: '⚙️' },
   { path: '/team', label: '小组管理', icon: '👥' },
   { path: '/binding', label: '深度绑定', icon: '🔗' },
+  { path: '/binding-records', label: '绑定记录', icon: '📋' },
   { path: '/filter', label: '装备筛选', icon: '🔍' },
   { path: '/notification', label: '站内通知', icon: '🔔' }
 ]
 
-const isActive = (path: string) => route.path.startsWith(path)
+const isActive = (path: string) => {
+  if (path === '/binding') return route.path === '/binding'
+  return route.path.startsWith(path)
+}
 
 const toggleCollapse = () => {
   isCollapsed.value = !isCollapsed.value

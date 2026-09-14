@@ -67,6 +67,19 @@ export interface Binding {
   status: string
 }
 
+export interface BindingRecord {
+  id: number
+  teamId: number
+  teamName: string
+  teamCertifiedDepth: number
+  equipmentId: number
+  equipmentName: string
+  equipmentMaxDepth: number
+  overCertified: boolean
+  boundAt: string
+  status: string
+}
+
 export interface Notification {
   id: number
   teamId: number
@@ -119,8 +132,8 @@ export const teamApi = {
 }
 
 export const bindingApi = {
-  list: (page = 0, size = 20) =>
-    request.get<PageResponse<Binding>>('/binding', { params: { page, size } }),
+  list: (page = 0, size = 20, overCertified?: boolean) =>
+    request.get<PageResponse<BindingRecord>>('/binding', { params: { page, size, overCertified } }),
   get: (id: number) => request.get<Binding>(`/binding/${id}`),
   getByTeam: (teamId: number) => request.get<Equipment[]>(`/binding/team/${teamId}`),
   create: (data: { teamId: number; equipmentId: number }) =>

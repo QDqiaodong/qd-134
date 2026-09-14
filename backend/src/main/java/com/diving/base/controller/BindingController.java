@@ -3,6 +3,7 @@ package com.diving.base.controller;
 import com.diving.base.dto.request.BindingCreateRequest;
 import com.diving.base.dto.request.BindingSyncRequest;
 import com.diving.base.dto.response.ApiResponse;
+import com.diving.base.dto.response.BindingResponse;
 import com.diving.base.dto.response.PageResponse;
 import com.diving.base.entity.Binding;
 import com.diving.base.entity.Equipment;
@@ -23,10 +24,11 @@ public class BindingController {
     private final BindingService bindingService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<PageResponse<Binding>>> list(
+    public ResponseEntity<ApiResponse<PageResponse<BindingResponse>>> list(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        PageResponse<Binding> result = bindingService.findAll(page, size);
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) Boolean overCertified) {
+        PageResponse<BindingResponse> result = bindingService.findAll(page, size, overCertified);
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 

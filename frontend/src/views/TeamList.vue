@@ -82,7 +82,7 @@ onMounted(() => {
       </ElTableColumn>
       <ElTableColumn label="持证深度(m)" width="130">
         <template #default="{ row }">
-          <ElTag :type="row.certifiedDepth >= row.maxDepth ? 'success' : 'warning'">
+          <ElTag :type="row.maxDepth <= row.certifiedDepth ? 'success' : 'danger'">
             {{ row.certifiedDepth }}
           </ElTag>
         </template>
