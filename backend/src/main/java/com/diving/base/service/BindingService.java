@@ -40,7 +40,6 @@ import java.util.Map;
 public class BindingService {
 
     private final BindingRepository bindingRepository;
-    private final TeamService teamService;
     private final EquipmentService equipmentService;
     private final EquipmentRepository equipmentRepository;
     private final TeamRepository teamRepository;
@@ -130,8 +129,19 @@ public class BindingService {
     @Transactional
     @CacheEvict(value = {"binding", "bindingTeam", "teamList"}, allEntries = true)
     public Binding doCreate(BindingCreateRequest request) {
-        Team team = teamService.findById(request.getTeamId());
+        // 直读数据库而非小组缓存：收队状态必须按最新落库值判定，
+        // 即使页面仍显示可绑，提交到此处也必须拦住失效剧组
+        Team team = teamRepository.findById(request.getTeamId())
+                .orElseThrow(() -> new RuntimeException("小组不存在: " + request.getTeamId()));
         Equipment equipment = equipmentService.findById(request.getEquipmentId());
+
+        if (Team.STATUS_WRAPPED.equals(team.getStatus())) {
+            log.warn("绑定拦截: 小组[{}]已收队，剧组失效禁止绑定装备 teamId={}, equipmentId={}",
+                    team.getName(), request.getTeamId(), request.getEquipmentId());
+            throw new RuntimeException(String.format(
+                    "小组[%s]已收队，剧组失效禁止绑定装备；如需继续占用，请先由管理员将小组状态改回拍摄中",
+                    team.getName()));
+        }
 
         if (bindingRepository.existsByTeamIdAndEquipmentId(request.getTeamId(), request.getEquipmentId())) {
             throw new RuntimeException("该装备已绑定到该小组，请勿重复提交");

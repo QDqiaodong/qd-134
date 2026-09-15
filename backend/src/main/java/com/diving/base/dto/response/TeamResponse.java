@@ -28,6 +28,7 @@ public class TeamResponse {
     private Integer maxDepth;
     private Integer certifiedDepth;
     private Boolean depthChangeNotify;
+    private String status;
     private String description;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
@@ -47,6 +48,7 @@ public class TeamResponse {
                 .maxDepth(team.getMaxDepth())
                 .certifiedDepth(team.getCertifiedDepth())
                 .depthChangeNotify(team.getDepthChangeNotify())
+                .status(team.getStatus() != null ? team.getStatus() : Team.STATUS_FILMING)
                 .description(team.getDescription())
                 .createdAt(team.getCreatedAt())
                 .updatedAt(team.getUpdatedAt())

@@ -1,6 +1,6 @@
 <script setup lang="ts">import { ref, onMounted, computed, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import { ElForm, ElFormItem, ElInput, ElInputNumber, ElButton, ElMessage, ElSwitch } from 'element-plus';
+import { ElForm, ElFormItem, ElInput, ElInputNumber, ElButton, ElMessage, ElSwitch, ElRadioGroup, ElRadioButton } from 'element-plus';
 import { teamApi } from '@/api';
 const router = useRouter();
 const route = useRoute();
@@ -12,6 +12,7 @@ const form = ref({
  maxDepth: 30,
  certifiedDepth: 30,
  depthChangeNotify: true,
+ status: 'FILMING',
  description: ''
 });
 const depthError = ref('');
@@ -50,6 +51,7 @@ const loadTeam = async () => {
  maxDepth: data.maxDepth,
  certifiedDepth: data.certifiedDepth,
  depthChangeNotify: data.depthChangeNotify ?? true,
+ status: data.status || 'FILMING',
  description: data.description || ''
  };
  } catch (error) {
@@ -142,6 +144,14 @@ onMounted(() => {
           inactive-text="退订"
         />
         <span class="notify-hint">订阅后，深度下调导致装备解绑时会收到站内通知</span>
+      </ElFormItem>
+
+      <ElFormItem label="剧组状态" prop="status">
+        <ElRadioGroup v-model="form.status">
+          <ElRadioButton value="FILMING">拍摄中</ElRadioButton>
+          <ElRadioButton value="WRAPPED">已收队</ElRadioButton>
+        </ElRadioGroup>
+        <span class="notify-hint">已收队的小组为失效剧组，不能再绑定装备；改回拍摄中后才可继续挂占用</span>
       </ElFormItem>
 
       <ElFormItem label="描述" prop="description">

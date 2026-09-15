@@ -4,6 +4,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -34,6 +35,9 @@ public class TeamCreateRequest {
     private Integer certifiedDepth;
 
     private Boolean depthChangeNotify;
+
+    @Pattern(regexp = "FILMING|WRAPPED", message = "小组状态只能是 FILMING(拍摄中) 或 WRAPPED(已收队)")
+    private String status;
 
     private String description;
 }

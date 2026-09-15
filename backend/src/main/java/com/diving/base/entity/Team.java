@@ -19,6 +19,11 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class Team {
 
+    /** 拍摄中：正常剧组，可绑定装备 */
+    public static final String STATUS_FILMING = "FILMING";
+    /** 已收队：失效剧组，禁止再绑定装备 */
+    public static final String STATUS_WRAPPED = "WRAPPED";
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -43,6 +48,15 @@ public class Team {
     @Column(name = "depth_change_notify", nullable = false)
     @Builder.Default
     private Boolean depthChangeNotify = true;
+
+    /**
+     * 剧组状态：FILMING=拍摄中，WRAPPED=已收队（失效剧组）。
+     * 已收队的小组禁止再绑定装备，需管理员改回拍摄中后才可继续挂占用。
+     * 列默认值保证存量小组迁移后仍为拍摄中。
+     */
+    @Column(name = "status", columnDefinition = "varchar(20) not null default 'FILMING'")
+    @Builder.Default
+    private String status = STATUS_FILMING;
 
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;

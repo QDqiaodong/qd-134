@@ -108,6 +108,7 @@ public class TeamService {
                 .maxDepth(request.getMaxDepth())
                 .certifiedDepth(request.getCertifiedDepth())
                 .depthChangeNotify(request.getDepthChangeNotify() != null ? request.getDepthChangeNotify() : true)
+                .status(request.getStatus() != null ? request.getStatus() : Team.STATUS_FILMING)
                 .description(request.getDescription())
                 .build();
 
@@ -139,6 +140,10 @@ public class TeamService {
         team.setCertifiedDepth(request.getCertifiedDepth());
         team.setDepthChangeNotify(request.getDepthChangeNotify() != null
                 ? request.getDepthChangeNotify() : team.getDepthChangeNotify());
+        // 管理员可在此收队（WRAPPED）或改回拍摄中（FILMING），失效剧组改回后才能继续挂占用
+        if (request.getStatus() != null) {
+            team.setStatus(request.getStatus());
+        }
         team.setDescription(request.getDescription());
 
         Team savedTeam = teamRepository.save(team);

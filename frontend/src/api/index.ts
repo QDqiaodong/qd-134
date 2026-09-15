@@ -54,6 +54,8 @@ export interface Team {
   maxDepth: number
   certifiedDepth: number
   depthChangeNotify: boolean
+  // 剧组状态：FILMING=拍摄中，WRAPPED=已收队（失效剧组，禁止绑定装备）
+  status: string
   description: string
   createdAt: string
   updatedAt: string

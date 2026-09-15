@@ -105,6 +105,13 @@ onMounted(() => {
           </ElTag>
         </template>
       </ElTableColumn>
+      <ElTableColumn label="剧组状态" width="100" align="center">
+        <template #default="{ row }">
+          <ElTag :type="row.status === 'WRAPPED' ? 'info' : 'success'">
+            {{ row.status === 'WRAPPED' ? '已收队' : '拍摄中' }}
+          </ElTag>
+        </template>
+      </ElTableColumn>
       <ElTableColumn prop="description" label="描述" show-overflow-tooltip />
       <ElTableColumn prop="createdAt" label="创建时间" width="180" />
       <ElTableColumn label="操作" width="180" fixed="right">

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import { ElTable, ElTableColumn, ElButton, ElSelect, ElOption, ElMessageBox, ElMessage, ElTag, ElCard } from 'element-plus'
+import { ElTable, ElTableColumn, ElButton, ElSelect, ElOption, ElMessageBox, ElMessage, ElTag, ElCard, ElAlert } from 'element-plus'
 import { teamApi, equipmentApi, bindingApi, type Team, type Equipment } from '@/api'
 
 const teams = ref<Team[]>([])
@@ -16,6 +16,9 @@ const isBinding = (equipmentId: number) => bindingIds.value.has(equipmentId)
 const selectedTeam = computed(() => {
   return teams.value.find(t => t.id === selectedTeamId.value)
 })
+
+// 已收队的小组是失效剧组：不能再绑装备，需管理员先在小组编辑里改回拍摄中
+const isTeamWrapped = computed(() => selectedTeam.value?.status === 'WRAPPED')
 
 // 只合计当前已绑定（占用中）的装备；已解绑的已从列表移除，不会计入；未填重量按 0
 const totalWeight = computed(() => {
@@ -34,7 +37,15 @@ const unboundEquipments = computed(() => {
 
 const canBind = (equipment: Equipment) => {
   if (!selectedTeam.value) return false
+  if (isTeamWrapped.value) return false
   return equipment.maxDepth <= selectedTeam.value.certifiedDepth
+}
+
+// 绑定按钮文案：提交中 > 已收队（失效剧组）> 超证 > 可绑定
+const bindLabel = (equipment: Equipment) => {
+  if (isBinding(equipment.id)) return '绑定中'
+  if (isTeamWrapped.value) return '已收队'
+  return canBind(equipment) ? '绑定' : '超证'
 }
 
 const loadTeams = async () => {
@@ -79,6 +90,12 @@ const handleBind = async (equipmentId: number) => {
   if (!selectedTeamId.value) return
   // 连点/重入直接忽略：同一装备的提交未返回前不再发第二个请求
   if (isBinding(equipmentId)) return
+
+  // 失效剧组前置拦截；即使此处绕过，后端提交仍会按最新落库状态拦住
+  if (isTeamWrapped.value) {
+    ElMessage.error(`小组「${selectedTeam.value?.name}」已收队，剧组失效禁止绑定装备`)
+    return
+  }
 
   const equipment = equipments.value.find(e => e.id === equipmentId)
   if (!equipment) return
@@ -173,13 +190,18 @@ onMounted(() => {
   <div class="binding-manager">
     <div class="section-header">
       <div class="team-select">
-        <ElSelect 
-          v-model="selectedTeamId" 
-          placeholder="请选择潜水小组" 
+        <ElSelect
+          v-model="selectedTeamId"
+          placeholder="请选择潜水小组"
           style="width: 240px"
           @change="handleTeamChange"
         >
-          <ElOption v-for="team in teams" :key="team.id" :label="team.name" :value="team.id" />
+          <ElOption
+            v-for="team in teams"
+            :key="team.id"
+            :label="team.status === 'WRAPPED' ? `${team.name}（已收队）` : team.name"
+            :value="team.id"
+          />
         </ElSelect>
         <ElButton 
           v-if="selectedTeam" 
@@ -199,11 +221,20 @@ onMounted(() => {
             <span>成员数量: {{ selectedTeam.memberCount }}</span>
             <span>深度范围: {{ selectedTeam.minDepth }}m - {{ selectedTeam.maxDepth }}m</span>
             <span>持证深度: <ElTag :type="selectedTeam.maxDepth <= selectedTeam.certifiedDepth ? 'success' : 'danger'">{{ selectedTeam.certifiedDepth }}m</ElTag></span>
+            <span>剧组状态: <ElTag :type="isTeamWrapped ? 'info' : 'success'">{{ isTeamWrapped ? '已收队' : '拍摄中' }}</ElTag></span>
             <span>占用装备总重: <strong>{{ formatWeight(totalWeight) }} kg</strong>（{{ boundEquipments.length }} 件）</span>
           </div>
         </div>
       </ElCard>
     </div>
+
+    <ElAlert
+      v-if="isTeamWrapped"
+      type="warning"
+      :closable="false"
+      title="该小组已收队，剧组已失效，不能再绑定装备；如需继续挂占用，请先在小组管理中将状态改回拍摄中"
+      class="wrapped-alert"
+    />
     
     <div class="binding-content">
       <div class="panel">
@@ -228,7 +259,7 @@ onMounted(() => {
                 :disabled="!canBind(row as Equipment) || isBinding((row as Equipment).id)"
                 @click="handleBind((row as Equipment).id)"
               >
-                {{ isBinding((row as Equipment).id) ? '绑定中' : (canBind(row as Equipment) ? '绑定' : '超证') }}
+                {{ bindLabel(row as Equipment) }}
               </ElButton>
             </template>
           </ElTableColumn>
@@ -275,6 +306,10 @@ onMounted(() => {
 }
 
 .team-info-card {
+  margin-bottom: 20px;
+}
+
+.wrapped-alert {
   margin-bottom: 20px;
 }
 
