@@ -13,6 +13,7 @@ const menuItems = [
   { path: '/binding', label: '深度绑定', icon: '🔗' },
   { path: '/binding-records', label: '绑定记录', icon: '📋' },
   { path: '/filter', label: '装备筛选', icon: '🔍' },
+  { path: '/dive', label: '下潜记录', icon: '🤿' },
   { path: '/notification', label: '站内通知', icon: '🔔' }
 ]
 

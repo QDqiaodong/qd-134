@@ -61,6 +61,8 @@ export interface Team {
   updatedAt: string
   // 当前占用（ACTIVE 绑定）装备的登记重量合计，已解绑的不计入，未填重量按 0
   totalWeight: number
+  // 当前未收潜记录；没有在潜记录时为 null（真正的在潜互斥状态，不是一个时间列）
+  activeDive: DiveRecord | null
 }
 
 export interface Binding {
@@ -98,6 +100,19 @@ export interface Notification {
   createdAt: string
 }
 
+export interface DiveRecord {
+  id: number
+  teamId: number
+  teamName: string
+  startTime: string
+  plannedEndTime: string
+  actualEndTime: string | null
+  status: string
+  createdAt: string
+  open: boolean
+  overdue: boolean
+}
+
 export interface PageResponse<T> {
   content: T[]
   totalElements: number
@@ -124,7 +139,7 @@ export const equipmentApi = {
     request.get<PageResponse<Equipment>>('/equipment/filter', { params: { minDepth, maxDepth, page, size } })
 }
 
-export type TeamPayload = Omit<Team, 'id' | 'createdAt' | 'updatedAt' | 'totalWeight'>
+export type TeamPayload = Omit<Team, 'id' | 'createdAt' | 'updatedAt' | 'totalWeight' | 'activeDive'>
 
 export const teamApi = {
   list: (page = 0, size = 20, keyword?: string) =>
@@ -158,6 +173,17 @@ export const notificationApi = {
   markRead: (id: number) => request.put<Notification>(`/notification/${id}/read`),
   unreadCount: (teamId?: number) =>
     request.get<number>('/notification/unread-count', { params: { teamId } })
+}
+
+export const diveApi = {
+  list: (page = 0, size = 20, teamId?: number | null, status?: string | null) =>
+    request.get<PageResponse<DiveRecord>>('/dive', { params: { page, size, teamId, status } }),
+  activeByTeam: (teamId: number) =>
+    request.get<DiveRecord | null>(`/dive/active/${teamId}`),
+  start: (data: { teamId: number; startTime: string; plannedEndTime: string }) =>
+    request.post<DiveRecord>('/dive/start', data),
+  end: (id: number, actualEndTime: string) =>
+    request.put<DiveRecord>(`/dive/${id}/end`, { actualEndTime })
 }
 
 export default api

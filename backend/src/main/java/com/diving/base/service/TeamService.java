@@ -1,11 +1,14 @@
 package com.diving.base.service;
 
 import com.diving.base.dto.request.TeamCreateRequest;
+import com.diving.base.dto.response.DiveRecordResponse;
 import com.diving.base.dto.response.PageResponse;
 import com.diving.base.dto.response.TeamResponse;
 import com.diving.base.dto.response.TeamWeightView;
+import com.diving.base.entity.DiveRecord;
 import com.diving.base.entity.Team;
 import com.diving.base.repository.BindingRepository;
+import com.diving.base.repository.DiveRecordRepository;
 import com.diving.base.repository.TeamRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +36,7 @@ public class TeamService {
 
     private final TeamRepository teamRepository;
     private final BindingRepository bindingRepository;
+    private final DiveRecordRepository diveRecordRepository;
 
     private BindingService bindingService;
 
@@ -62,9 +66,14 @@ public class TeamService {
                 .map(Team::getId)
                 .collect(Collectors.toList());
         Map<Long, BigDecimal> weightByTeam = sumActiveWeight(teamIds);
+        Map<Long, String> teamNameById = teamPage.getContent().stream()
+                .collect(Collectors.toMap(Team::getId, Team::getName, (a, b) -> a));
+        Map<Long, DiveRecordResponse> activeDiveByTeam = loadActiveDives(teamIds, teamNameById);
 
         List<TeamResponse> content = teamPage.getContent().stream()
-                .map(team -> TeamResponse.of(team, weightByTeam.get(team.getId())))
+                .map(team -> TeamResponse.of(team,
+                        weightByTeam.get(team.getId()),
+                        activeDiveByTeam.get(team.getId())))
                 .collect(Collectors.toList());
 
         Page<TeamResponse> responsePage = new PageImpl<>(content, pageable, teamPage.getTotalElements());
@@ -84,6 +93,33 @@ public class TeamService {
                         TeamWeightView::getTeamId,
                         view -> view.getTotalWeight() != null ? view.getTotalWeight() : BigDecimal.ZERO,
                         (a, b) -> a));
+    }
+
+    /**
+     * 批量取各小组当前未收潜记录，组装成小组视图需要的在潜状态。
+     * 同一小组至多一条（唯一索引保证）；没有在潜记录的小组不在 Map 中，视图字段为 null。
+     */
+    private Map<Long, DiveRecordResponse> loadActiveDives(List<Long> teamIds,
+                                                          Map<Long, String> teamNameById) {
+        if (teamIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return diveRecordRepository.findByActiveTeamIdIn(teamIds).stream()
+                .map(dive -> Map.entry(dive.getTeamId(), toDiveResponse(dive,
+                        teamNameById.get(dive.getTeamId()))))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (a, b) -> a));
+    }
+
+    private DiveRecordResponse toDiveResponse(DiveRecord dive, String teamName) {
+        return new DiveRecordResponse(
+                dive.getId(),
+                dive.getTeamId(),
+                teamName,
+                dive.getStartTime(),
+                dive.getPlannedEndTime(),
+                dive.getActualEndTime(),
+                dive.getStatus(),
+                dive.getCreatedAt());
     }
 
     @Transactional

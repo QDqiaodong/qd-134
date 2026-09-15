@@ -112,6 +112,17 @@ onMounted(() => {
           </ElTag>
         </template>
       </ElTableColumn>
+      <ElTableColumn label="下潜状态" width="200" align="center">
+        <template #default="{ row }">
+          <ElTag v-if="row.activeDive" :type="row.activeDive.overdue ? 'danger' : 'warning'">
+            {{ row.activeDive.overdue ? '未收潜·超时' : '未收潜' }}
+          </ElTag>
+          <ElTag v-else type="success">岸上</ElTag>
+          <div v-if="row.activeDive" class="dive-time">
+            开始 {{ row.activeDive.startTime }}
+          </div>
+        </template>
+      </ElTableColumn>
       <ElTableColumn prop="description" label="描述" show-overflow-tooltip />
       <ElTableColumn prop="createdAt" label="创建时间" width="180" />
       <ElTableColumn label="操作" width="180" fixed="right">
@@ -151,5 +162,12 @@ onMounted(() => {
 .total-weight {
   font-weight: 600;
   color: #0A2463;
+}
+
+.dive-time {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #64748B;
+  line-height: 1.3;
 }
 </style>
