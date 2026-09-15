@@ -46,6 +46,11 @@ public interface BindingRepository extends JpaRepository<Binding, Long> {
     List<Binding> findByEquipmentId(Long equipmentId);
 
     /**
+     * 是否存在某装备指定状态的绑定记录；删除装备档案前用它判定是否仍被占用。
+     */
+    boolean existsByEquipmentIdAndStatus(Long equipmentId, String status);
+
+    /**
      * 绑定记录联表分页查询，overCertified 为 null 时不过滤；
      * 超证判定实时基于小组当前持证深度与装备额定深度比较。
      */

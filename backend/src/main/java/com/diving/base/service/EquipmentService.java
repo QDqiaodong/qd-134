@@ -3,6 +3,7 @@ package com.diving.base.service;
 import com.diving.base.dto.request.EquipmentCreateRequest;
 import com.diving.base.dto.response.PageResponse;
 import com.diving.base.entity.Equipment;
+import com.diving.base.repository.BindingRepository;
 import com.diving.base.repository.EquipmentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class EquipmentService {
 
     private final EquipmentRepository equipmentRepository;
+    private final BindingRepository bindingRepository;
 
     @Cacheable(value = "equipment", key = "#id")
     public Equipment findById(Long id) {
@@ -90,9 +92,17 @@ public class EquipmentService {
     @Transactional
     @CacheEvict(value = {"equipment", "equipmentList", "equipmentFilter", "teamList"}, allEntries = true)
     public void delete(Long id) {
-        if (!equipmentRepository.existsById(id)) {
-            throw new RuntimeException("装备不存在: " + id);
+        Equipment equipment = equipmentRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("装备不存在: " + id));
+
+        // 仍被小组占用（ACTIVE 绑定）的装备禁止删除，否则占用记录悬空、名单留空名；
+        // 管理员需先在绑定管理中解绑，无人占用后才能删除档案
+        if (bindingRepository.existsByEquipmentIdAndStatus(id, "ACTIVE")) {
+            log.warn("删除装备拦截: 装备[{}]仍被小组占用，禁止删除 equipmentId={}", equipment.getName(), id);
+            throw new RuntimeException(String.format(
+                    "装备[%s]仍被小组占用，禁止删除；请先由管理员解绑后再删除档案", equipment.getName()));
         }
+
         equipmentRepository.deleteById(id);
     }
 }
