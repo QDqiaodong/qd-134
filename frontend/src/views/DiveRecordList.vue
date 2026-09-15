@@ -4,7 +4,7 @@ import {
   ElTable, ElTableColumn, ElButton, ElSelect, ElOption, ElPagination,
   ElMessage, ElTag, ElDialog, ElForm, ElFormItem, ElDatePicker, ElAlert
 } from 'element-plus'
-import { diveApi, teamApi, type DiveRecord, type Team } from '@/api'
+import { diveApi, teamApi, seaConditionApi, type DiveRecord, type Team, type SeaConditionReport } from '@/api'
 
 const records = ref<DiveRecord[]>([])
 const teams = ref<Team[]>([])
@@ -25,6 +25,26 @@ const startForm = reactive({
   startTime: null as Date | null,
   plannedEndTime: null as Date | null
 })
+// 开潜日期当天的海况单：null=未交单，divable=false 时当天开潜会被挡
+const startSea = ref<SeaConditionReport | null>(null)
+const startSeaLoading = ref(false)
+
+// 按开潜开始时刻的日期取当天海况单；岸上当天记过不能下水时前端直接挡住开潜
+const loadStartSea = async () => {
+  if (!startForm.startTime) {
+    startSea.value = null
+    return
+  }
+  startSeaLoading.value = true
+  try {
+    const date = formatDateTime(startForm.startTime).slice(0, 10)
+    startSea.value = await seaConditionApi.byDate(date)
+  } catch (error) {
+    ElMessage.error((error as Error).message)
+  } finally {
+    startSeaLoading.value = false
+  }
+}
 
 // ---------- 收潜弹窗 ----------
 const endVisible = ref(false)
@@ -81,7 +101,10 @@ const openStartDialog = () => {
   startForm.teamId = null
   startForm.startTime = now
   startForm.plannedEndTime = inOneHour
+  startSea.value = null
   startVisible.value = true
+  // 带出开潜当天的海况单；记为不能下水时确认按钮会被挡住
+  loadStartSea()
 }
 
 const submitStart = async () => {
@@ -100,6 +123,14 @@ const submitStart = async () => {
   // 前置校验：预计结束必须晚于开始；后端会再次校验
   if (startForm.plannedEndTime.getTime() <= startForm.startTime.getTime()) {
     ElMessage.error('预计结束时刻必须晚于开始时刻')
+    return
+  }
+  // 海况拦截：岸上当天已记不能下水，开潜直接挡住（后端会按同一规则再次强制拦截）
+  if (startSea.value && startSea.value.divable === false) {
+    ElMessage.error(
+      `开潜当天海况单已记为不能下水（浪高 ${Number(startSea.value.waveHeight ?? 0).toFixed(2)} 米、` +
+      `能见度 ${Number(startSea.value.visibility ?? 0).toFixed(2)} 米），当天禁止下水`
+    )
     return
   }
 
@@ -187,7 +218,7 @@ onMounted(() => {
     <ElAlert
       type="info"
       :closable="false"
-      title="同一小组只要还有未收潜记录就不能再开第二条；收潜必须填写实际结束时刻，且不能早于开始时刻。"
+      title="同一小组只要还有未收潜记录就不能再开第二条；开潜当天海况单记为不能下水时一律拦截（提示带浪高、能见度）；收潜必须填写实际结束时刻，且不能早于开始时刻。"
       class="rule-alert"
     />
 
@@ -260,6 +291,7 @@ onMounted(() => {
             value-format="YYYY-MM-DD HH:mm:ss"
             placeholder="选择开始时刻"
             style="width: 100%"
+            @change="loadStartSea"
           />
         </ElFormItem>
         <ElFormItem label="预计结束" required>
@@ -273,9 +305,40 @@ onMounted(() => {
           />
         </ElFormItem>
       </ElForm>
+
+      <!-- 开潜日期当天的海况单：不能下水直接挡住，提示带浪高与能见度 -->
+      <div v-loading="startSeaLoading" class="start-sea">
+        <ElAlert
+          v-if="startSea && startSea.divable === false"
+          type="error"
+          :closable="false"
+          show-icon
+          :title="`${startSea.reportDate} 海况单：不能下水（浪高 ${Number(startSea.waveHeight ?? 0).toFixed(2)} 米、能见度 ${Number(startSea.visibility ?? 0).toFixed(2)} 米），当天禁止开潜`"
+        />
+        <ElAlert
+          v-else-if="startSea && startSea.divable === true"
+          type="success"
+          :closable="false"
+          :title="`${startSea.reportDate} 海况单：可以下水（浪高 ${Number(startSea.waveHeight ?? 0).toFixed(2)} 米、能见度 ${Number(startSea.visibility ?? 0).toFixed(2)} 米）`"
+        />
+        <ElAlert
+          v-else
+          type="info"
+          :closable="false"
+          title="开潜当天还没有海况单"
+        />
+      </div>
+
       <template #footer>
         <ElButton @click="startVisible = false">取消</ElButton>
-        <ElButton type="primary" :loading="startSubmitting" @click="submitStart">确认开潜</ElButton>
+        <ElButton
+          type="primary"
+          :loading="startSubmitting"
+          :disabled="!!(startSea && startSea.divable === false)"
+          @click="submitStart"
+        >
+          确认开潜
+        </ElButton>
       </template>
     </ElDialog>
 
@@ -323,6 +386,10 @@ onMounted(() => {
 
 .rule-alert {
   margin-bottom: 16px;
+}
+
+.start-sea {
+  margin-top: 4px;
 }
 
 .overdue-text {

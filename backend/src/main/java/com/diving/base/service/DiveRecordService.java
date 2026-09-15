@@ -5,6 +5,7 @@ import com.diving.base.dto.request.DiveStartRequest;
 import com.diving.base.dto.response.DiveRecordResponse;
 import com.diving.base.dto.response.PageResponse;
 import com.diving.base.entity.DiveRecord;
+import com.diving.base.entity.SeaConditionReport;
 import com.diving.base.entity.Team;
 import com.diving.base.repository.DiveRecordRepository;
 import com.diving.base.repository.TeamRepository;
@@ -46,6 +47,7 @@ public class DiveRecordService {
 
     private final DiveRecordRepository diveRecordRepository;
     private final TeamRepository teamRepository;
+    private final SeaConditionService seaConditionService;
     private final StringRedisTemplate stringRedisTemplate;
 
     private DiveRecordService self;
@@ -97,6 +99,14 @@ public class DiveRecordService {
         if (!request.getPlannedEndTime().isAfter(request.getStartTime())) {
             throw new RuntimeException("预计结束时刻必须晚于开始时刻");
         }
+
+        // 岸上当天已记下不能下水：拦截一切开潜，提示带出海况单上的浪高与能见度；
+        // 当天可以下水或还没交海况单时不拦。直读数据库，保证刚交单立刻生效。
+        seaConditionService.findEntityByDate(request.getStartTime().toLocalDate())
+                .filter(report -> Boolean.FALSE.equals(report.getDivable()))
+                .ifPresent(report -> {
+                    throw new RuntimeException(buildSeaBlockedMessage(team.getName(), report));
+                });
 
         diveRecordRepository.findByActiveTeamId(request.getTeamId())
                 .ifPresent(open -> {
@@ -204,6 +214,20 @@ public class DiveRecordService {
     private String buildOpenBlockMessage(String teamName, java.time.LocalDateTime startTime) {
         return String.format("小组[%s]上一潜从 %s 开始，尚未收潜，不能再开第二条下潜记录",
                 teamName, startTime.format(TIME_FORMATTER));
+    }
+
+    /**
+     * 组装海况拦截提示：明确告知当天海况单已记为不能下水，
+     * 并带出海况单上的浪高与能见度。
+     */
+    private String buildSeaBlockedMessage(String teamName, SeaConditionReport report) {
+        return String.format("小组[%s]开潜被拦截：%s 的海况单已记为不能下水（浪高 %s 米、能见度 %s 米），当天禁止下水",
+                teamName,
+                report.getReportDate(),
+                report.getWaveHeight() != null
+                        ? report.getWaveHeight().stripTrailingZeros().toPlainString() : "—",
+                report.getVisibility() != null
+                        ? report.getVisibility().stripTrailingZeros().toPlainString() : "—");
     }
 
     private DiveRecordResponse toResponse(DiveRecord record, String teamName) {

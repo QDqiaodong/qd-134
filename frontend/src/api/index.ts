@@ -113,6 +113,19 @@ export interface DiveRecord {
   overdue: boolean
 }
 
+export interface SeaConditionReport {
+  id: number
+  reportDate: string
+  waveHeight: number
+  visibility: number
+  // 当天能否下水：false 时当天所有小组开潜都会被后端拦截
+  divable: boolean
+  reporter: string
+  remark: string | null
+  createdAt: string
+  updatedAt: string
+}
+
 export interface PageResponse<T> {
   content: T[]
   totalElements: number
@@ -184,6 +197,24 @@ export const diveApi = {
     request.post<DiveRecord>('/dive/start', data),
   end: (id: number, actualEndTime: string) =>
     request.put<DiveRecord>(`/dive/${id}/end`, { actualEndTime })
+}
+
+export const seaConditionApi = {
+  list: (page = 0, size = 20) =>
+    request.get<PageResponse<SeaConditionReport>>('/sea-condition', { params: { page, size } }),
+  // 查某天海况单，date 为 YYYY-MM-DD；不传取今天，未交单返回 null
+  byDate: (date?: string) =>
+    request.get<SeaConditionReport | null>('/sea-condition/by-date', { params: { date } }),
+  today: () => request.get<SeaConditionReport | null>('/sea-condition/today'),
+  // 交海况单；同一天只能落一张，重复提交后端拒绝并带回当天已记的浪高、能见度
+  report: (data: {
+    reportDate: string
+    waveHeight: number
+    visibility: number
+    divable: boolean
+    reporter?: string
+    remark?: string
+  }) => request.post<SeaConditionReport>('/sea-condition', data)
 }
 
 export default api

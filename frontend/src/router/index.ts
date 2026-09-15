@@ -8,6 +8,7 @@ import BindingList from '@/views/BindingList.vue'
 import EquipmentFilter from '@/views/EquipmentFilter.vue'
 import NotificationList from '@/views/NotificationList.vue'
 import DiveRecordList from '@/views/DiveRecordList.vue'
+import SeaConditionList from '@/views/SeaConditionList.vue'
 
 const routes = [
   { path: '/', redirect: '/equipment' },
@@ -21,6 +22,7 @@ const routes = [
   { path: '/binding-records', component: BindingList },
   { path: '/filter', component: EquipmentFilter },
   { path: '/dive', component: DiveRecordList },
+  { path: '/sea-condition', component: SeaConditionList },
   { path: '/notification', component: NotificationList }
 ]
 

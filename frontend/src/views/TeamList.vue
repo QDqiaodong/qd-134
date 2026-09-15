@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElTable, ElTableColumn, ElButton, ElInput, ElPagination, ElMessageBox, ElMessage, ElTag } from 'element-plus'
-import { teamApi, type Team } from '@/api'
+import { teamApi, seaConditionApi, type Team, type SeaConditionReport } from '@/api'
 
 const router = useRouter()
 const teams = ref<Team[]>([])
@@ -11,6 +11,17 @@ const keyword = ref('')
 const currentPage = ref(0)
 const pageSize = ref(10)
 const total = ref(0)
+
+// 今天的海况单：每天一张，null 表示岸上还没交单（仅在名单旁提示，开潜拦截以后端为准）
+const todaySea = ref<SeaConditionReport | null>(null)
+
+const loadTodaySea = async () => {
+  try {
+    todaySea.value = await seaConditionApi.today()
+  } catch (error) {
+    ElMessage.error((error as Error).message)
+  }
+}
 
 const loadTeams = async () => {
   loading.value = true
@@ -61,6 +72,7 @@ const formatWeight = (weight: number | null | undefined) => {
 
 onMounted(() => {
   loadTeams()
+  loadTodaySea()
 })
 </script>
 
@@ -80,6 +92,20 @@ onMounted(() => {
     
     <ElTable :data="teams" :loading="loading" border stripe style="width: 100%">
       <ElTableColumn prop="name" label="小组名称" width="150" />
+      <ElTableColumn label="今日海况" width="200" align="center">
+        <template #default>
+          <template v-if="todaySea">
+            <ElTag :type="todaySea.divable ? 'success' : 'danger'">
+              海况·{{ todaySea.divable ? '可下水' : '不能下水' }}
+            </ElTag>
+            <div class="sea-metric">
+              浪高 {{ Number(todaySea.waveHeight ?? 0).toFixed(2) }}m ·
+              能见度 {{ Number(todaySea.visibility ?? 0).toFixed(2) }}m
+            </div>
+          </template>
+          <ElTag v-else type="info">海况·未交单</ElTag>
+        </template>
+      </ElTableColumn>
       <ElTableColumn label="占用装备总重(kg)" width="160" align="right">
         <template #default="{ row }">
           <span class="total-weight">{{ formatWeight(row.totalWeight) }}</span>
@@ -165,6 +191,13 @@ onMounted(() => {
 }
 
 .dive-time {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #64748B;
+  line-height: 1.3;
+}
+
+.sea-metric {
   margin-top: 4px;
   font-size: 12px;
   color: #64748B;
